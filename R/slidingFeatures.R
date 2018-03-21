@@ -40,7 +40,7 @@ slidingFeatures <- function(y, window.lengths, step.lengths,
     n <- dim(y)[1]
   }
   out <- lapply(1:length(window.lengths), function(i) {
-    windows <- get.timewins(n = n, window.length = window.lengths[i], step.length = step.lengths[i])
+    windows <- getSlidingWindows(n = n, window.length = window.lengths[i], step.length = step.lengths[i])
     windowFeatures(y = y, windows = windows, feature = feature, return.data.table = return.data.table)
   })
   if (return.data.table) {
@@ -49,3 +49,4 @@ slidingFeatures <- function(y, window.lengths, step.lengths,
     return(out)
   }
 }
+
