@@ -49,3 +49,68 @@ patternFitting.roblm <- function(y,
   ))
   return(out)
 }
+
+patternFitting.roblm2 <- function(y,
+                                 pat = rep(1, length(y)),
+                                 alpha = 0.1) {
+  n <- length(y)
+  y <- robustScaling(y)
+  X <- cbind(
+    intercept = rep(1, n),
+    slope = 1:n,
+    pattern = approx(pat, n = length(y))$y
+  )
+  m1 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope')]),
+                  y = y,
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  m2 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'pattern')]),
+                  y = y,
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  m3 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope', 'pattern')]),
+                  y = y,
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  y.smoothed <- y
+  y.smoothed[which(abs(m3$residuals) > qnorm(0.975, mean = 0, sd = m3$scale))] <-
+    m3$fitted.values[which(abs(m3$residuals) > qnorm(0.975, mean = 0, sd = m3$scale))]
+  res <- robustHarveyTest(y = y.smoothed,
+                          X = X[, c('slope', 'pattern')])
+  return(list(
+    pattern_coef_m2 = m2$coefficients['pattern'],
+    pattern_coef_m3 = m3$coefficients['pattern'],
+    m1_scale = m1$scale,
+    m2_scale = m2$scale,
+    m3_scale = m3$scale,
+    m1_lrvar = lrvar(m1$residuals, type = 'Newey-West'),
+    m2_lrvar = lrvar(m2$residuals, type = 'Newey-West'),
+    m3_lrvar = lrvar(m3$residuals, type = 'Newey-West'),
+    harvey_z = res$z['pattern'],
+    harvey_p = res$p.value['pattern']
+  ))
+  return(out)
+}
+
+patternFitting.robustharvey <- function(y,
+                                        pat = rep(1, length(y)),
+                                        alpha = 0.1) {
+  n <- length(y)
+  y <- robustScaling(y, alpha = alpha)
+  X <- cbind(
+    intercept = rep(1, n),
+    slope = 1:n,
+    pattern = approx(pat, n = length(y))$y
+  )
+  m.rob <- lmrob.fit(x = as.matrix(X),
+                     y = y,
+                     control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  y.smoothed <- y
+  y.smoothed[which(abs(m.rob$residuals) > qnorm(0.975, mean = 0, sd = m.rob$scale))] <-
+    m.rob$fitted.values[which(abs(m.rob$residuals) > qnorm(0.975, mean = 0, sd = m.rob$scale))]
+  res <- robustHarveyTest(y = y.smoothed,
+                          X = X[, c('slope', 'pattern')])
+  return(
+    list(
+      z = res$z['pattern'],
+      p.value = res$p.value['pattern']
+    )
+  )
+}
