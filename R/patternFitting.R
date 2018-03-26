@@ -184,3 +184,13 @@ patternFitting.roblm4 <- function(y,
   ))
   return(out)
 }
+
+convoluteTimeseries <- function(y, length.out) {
+  smoothed <- sapply(split(y, ceiling(seq_along(y) * length.out / length(y))), function(x) median(x))
+  smoothed <- (smoothed - min(smoothed)) / (max(smoothed) - min(smoothed))
+  return(
+    list(
+      smoothed = smoothed
+    )
+  )
+}
