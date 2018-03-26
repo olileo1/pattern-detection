@@ -111,6 +111,11 @@ robustHarveyTest <- function(y, X) {
   z <- (1 - lambda) * (beta.0 / s.0) + lambda * (beta.1 / s.1)
   return(
     list(z = z,
-         p.value = pnorm(abs(z), mean = 0, sd = 1, lower.tail = FALSE))
+         p.value = pnorm(abs(z), mean = 0, sd = 1, lower.tail = FALSE),
+         lambda = lambda,
+         beta.0 = beta.0,
+         s.0 = s.0,
+         beta.1 = beta.1,
+         s.1 = s.1)
   )
 }
