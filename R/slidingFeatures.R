@@ -50,3 +50,38 @@ slidingFeatures <- function(y, window.lengths, step.lengths,
   }
 }
 
+patternSearch.robust <- function(y,
+                                 window.lengths = floor(c(0.1, 0.5) * length(y)),
+                                 step.lengths = rep(floor(0.1 * length(y)), length(window.lengths)),
+                                 pattern = list(x = c(0, 0.1, 1), y = c(0, 1, 0)),
+                                 m1.pattern.threshold = 0,
+                                 m2.pattern.threshold = 0.05,
+                                 plot = NULL) {
+  featuretable <- slidingFeatures(y = y,
+                                  window.lengths = window.lengths,
+                                  step.lengths = step.lengths,
+                                  feature = function(x) {patternFitting.partyparty(y = x, pat = pattern)},
+                                  return.data.table = TRUE)
+  m1.outlier.model <- lmrob(featuretable[['m1.max.sign.pat.coef']] ~ 1)
+  set(featuretable, j = 'm1.outliers', value = m1.outlier.model$rweights)
+  m2.outlier.model <- lmrob(featuretable[['m2.max.sign.pat.coef']] ~ 1)
+  set(featuretable, j = 'm2.outliers', value = m2.outlier.model$rweights)
+  out <- featuretable[m1.max.sign.pat.coef > m1.pattern.threshold &
+                        m2.max.sign.pat.coef > m2.pattern.threshold][order(m2.outliers)]
+  if (nrow(out) == 0) {
+    return(NULL)
+  } else {
+    if (!is.null(plot) && plot > 0) {
+      p <- lapply(1:min(nrow(out), plot), function(i) {
+        ggplot(data = data.frame(x = 1:length(y), y = y), aes(x = x, y = y)) +
+          geom_rect(aes(xmin = out[i][['win.start']], xmax = out[i][['win.end']], ymin = -Inf, ymax = Inf)) +
+          geom_line() +
+          ggtitle(paste0('m2.pat.coef: ', round(out[i][['m2.pat.coef']], 3),
+                         ' m2.outliers: ', round(out[i][['m2.outliers']], 3)))
+      })
+      do.call('grid.arrange', c(p, ncol = 2))
+    }
+    return(out)
+  }
+}
+

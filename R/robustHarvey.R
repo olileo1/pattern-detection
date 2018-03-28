@@ -100,7 +100,7 @@ robustHarveyTest <- function(y, X) {
   omega.0 <- lrvar(u.0, type = 'Newey-West')
   s.0 <- sqrt(omega.0 * n * diag(solve(t(X) %*% X)))
   y.diff <- y[-1] - y[-n]
-  X.diff <- X[-1,] - X[-n,]
+  X.diff <- as.matrix(X[-1,] - X[-n,])
   beta.1 <- solve(t(X.diff) %*% X.diff, t(X.diff) %*% y.diff)[,1]
   u.1 <- y.diff - X.diff %*% beta.1
   omega.1 <- lrvar(u.1, type = 'Newey-West')
@@ -115,7 +115,9 @@ robustHarveyTest <- function(y, X) {
          lambda = lambda,
          beta.0 = beta.0,
          s.0 = s.0,
+         var.0 = omega.0 * (n - 1),
          beta.1 = beta.1,
-         s.1 = s.1)
+         s.1 = s.1,
+         var.1 = omega.1 * (n - 1))
   )
 }

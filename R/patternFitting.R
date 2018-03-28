@@ -194,3 +194,112 @@ convoluteTimeseries <- function(y, length.out) {
     )
   )
 }
+
+movingMedian <- function(y, n.back = 2, n.ahead = 2) {
+  n <- length(y)
+  y.smoothed <- sapply(1:n, function(i) {
+    median(y[max(0, (i - n.back)):min((i + n.ahead), n)])
+  })
+  return(y.smoothed)
+}
+
+patternFitting.harvey <- function(y,
+                                  pat = list(x = c(0, 0.1, 1), y = c(0, 1, 0))) {
+  n <- length(y)
+  y.smoothed <- movingMedian(y = y, n.back = 2, n.ahead = 2)
+  y.smoothed <- y.smoothed / median(y.smoothed[1:floor(n / 20)])
+  X <- cbind(
+    intercept = rep(1, n),
+    slope = 1:n,
+    pattern = approx(pat, n = length(y))$y
+  )
+  harvey1 <- robustHarveyTest(y = y.smoothed,
+                              X = as.matrix(X[, c('slope')]))
+  harvey2 <- robustHarveyTest(y = y.smoothed,
+                              X = as.matrix(X[, c('pattern')]))
+  harvey3 <- robustHarveyTest(y = y.smoothed,
+                              X = as.matrix(X[, c('pattern', 'slope')]))
+  return(list(
+    harvey1.var = harvey1$lambda * harvey1$var.0 + (1 - harvey1$lambda) * harvey1$var.1,
+    harvey2.var = harvey2$lambda * harvey2$var.0 + (1 - harvey2$lambda) * harvey2$var.1,
+    harvey3.var = harvey3$lambda * harvey3$var.0 + (1 - harvey3$lambda) * harvey3$var.1,
+    harvey2.beta0 = harvey2$beta.0,
+    harvey2.s0 = harvey2$s.0,
+    harvey2.beta1 = harvey2$beta.1,
+    harvey2.s1 = harvey2$s.1,
+    harvey2.lambda = harvey2$lambda,
+    harvey3.beta0 = harvey3$beta.0['pattern'],
+    harvey3.s0 = harvey3$s.0['pattern'],
+    harvey3.beta1 = harvey3$beta.1['pattern'],
+    harvey3.s1 = harvey3$s.1['pattern'],
+    harvey3.lambda = harvey3$lambda
+  ))
+}
+
+patternFitting.roblm.new <- function(y,
+                                     pat = list(x = c(0, 0.1, 1), y = c(0, 1, 0))) {
+  n <- length(y)
+  y <- y / median(y[1:floor(n / 20)])
+  X <- cbind(
+    intercept = rep(1, n),
+    slope = 1:n,
+    pattern = approx(pat, n = length(y))$y
+  )
+  m1 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope')]),
+                  y = y,
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  m2 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'pattern')]),
+                  y = y,
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  m3 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope', 'pattern')]),
+                  y = y,
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  return(list(
+    m1.scale = m1$scale,
+    m2.scale = m2$scale,
+    m3.scale = m3$scale,
+    m2.beta = m2$coefficients['pattern'],
+    m2.s = m2$cov['pattern', 'pattern'],
+    m3.beta = m3$coefficients['pattern'],
+    m3.s = m3$cov['pattern', 'pattern']
+  ))
+}
+
+patternFitting.partyparty <- function(y,
+                                      pat = list(
+                                        x = c(0, 0.1, 1),
+                                        y = c(0, 0.1, 1)
+                                        )
+                                      ) {
+  n <- length(y)
+  y <- y / median(y[1:floor(n / 20)])
+  X <- cbind(
+    intercept = rep(1, n),
+    slope = 1:n,
+    pattern = approx(pat, n = length(y))$y
+  )
+  m.base <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope')]),
+                      y = y,
+                      control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  m1 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'pattern')]),
+                  y = y,
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  m2 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope', 'pattern')]),
+                  y = y,
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+  return(
+    list(
+      m.base.scale = m.base$scale,
+      m1.scale = m1$scale,
+      m1.pat.coef = m1$coefficients['pattern'],
+      m1.pat.coef.sd = m1$cov['pattern', 'pattern'],
+      m1.max.sign.pat.coef = m1$coefficients['pattern'] -
+        qt(0.99, df = m1$df.residual, lower.tail = TRUE) * sqrt(m1$cov['pattern', 'pattern']),
+      m2.scale = m2$scale,
+      m2.pat.coef = m2$coefficients['pattern'],
+      m2.pat.coef.sd = m2$cov['pattern', 'pattern'],
+      m2.max.sign.pat.coef = m2$coefficients['pattern'] -
+        qt(0.99, df = m2$df.residual, lower.tail = TRUE) * sqrt(m2$cov['pattern', 'pattern'])
+    )
+  )
+}
