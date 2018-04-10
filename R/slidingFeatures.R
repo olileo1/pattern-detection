@@ -62,10 +62,15 @@ patternSearch.robust <- function(y,
                                   step.lengths = step.lengths,
                                   feature = function(x) {patternFitting.partyparty(y = x, pat = pattern)},
                                   return.data.table = TRUE)
+  
   m1.outlier.model <- lmrob(featuretable[['m1.max.sign.pat.coef']] ~ 1)
   set(featuretable, j = 'm1.outliers', value = m1.outlier.model$rweights)
   m2.outlier.model <- lmrob(featuretable[['m2.max.sign.pat.coef']] ~ 1)
   set(featuretable, j = 'm2.outliers', value = m2.outlier.model$rweights)
+  rmcd <- covMcd(cbind(featuretable[['m1.pat.coef']],featuretable[['m2.pat.coef']]))
+  mdist <- mahalanobis(cbind(featuretable[['m1.pat.coef']],featuretable[['m2.pat.coef']]),
+                     center = rmcd$center, cov = rmcd$cov  )
+  set(featuretable, j = 'mdist', value = mdist)
   out <- featuretable[m1.max.sign.pat.coef > m1.pattern.threshold &
                         m2.max.sign.pat.coef > m2.pattern.threshold][order(m2.outliers)]
   if (nrow(out) == 0) {

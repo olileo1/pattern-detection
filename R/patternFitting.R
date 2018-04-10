@@ -280,26 +280,32 @@ patternFitting.partyparty <- function(y,
   )
   m.base <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope')]),
                       y = y,
-                      control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+                      control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, k.max = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
   m1 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'pattern')]),
                   y = y,
-                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, k.max = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
   m2 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope', 'pattern')]),
                   y = y,
-                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, k.max = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
   return(
     list(
       m.base.scale = m.base$scale,
+      m.base.slope.coef = m.base$coefficients['slope'],
       m1.scale = m1$scale,
       m1.pat.coef = m1$coefficients['pattern'],
       m1.pat.coef.sd = m1$cov['pattern', 'pattern'],
       m1.max.sign.pat.coef = m1$coefficients['pattern'] -
         qt(0.99, df = m1$df.residual, lower.tail = TRUE) * sqrt(m1$cov['pattern', 'pattern']),
+      m1.res = list(res = m1$residuals),
+      m1.fit = list(fit = m1$fitted.values),
       m2.scale = m2$scale,
       m2.pat.coef = m2$coefficients['pattern'],
       m2.pat.coef.sd = m2$cov['pattern', 'pattern'],
       m2.max.sign.pat.coef = m2$coefficients['pattern'] -
-        qt(0.99, df = m2$df.residual, lower.tail = TRUE) * sqrt(m2$cov['pattern', 'pattern'])
+        qt(0.99, df = m2$df.residual, lower.tail = TRUE) * sqrt(m2$cov['pattern', 'pattern']),
+      m2.slope.coef = m2$coefficients['slope'],
+      m2.res = list(res = m2$residuals),
+      m2.fit = list(fit = m2$fitted.values)
     )
   )
 }
