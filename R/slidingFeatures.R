@@ -50,6 +50,22 @@ slidingFeatures <- function(y, window.lengths, step.lengths,
   }
 }
 
+patternSearch.gangnamstyle <- function(y,
+                                       window.lengths = floor(c(0.1, 0.5) * length(y)),
+                                       step.lengths = rep(floor(0.1 * length(y)), length(window.lengths)),
+                                       pattern = list(x = c(0, 0.1, 1), y = c(0, 1, 0))) {
+  featuretable <- slidingFeatures(y = y,
+                                  window.lengths = window.lengths,
+                                  step.lengths = step.lengths,
+                                  feature = function(x) {patternFitting.fiesta(y = x, pat = pattern)},
+                                  return.data.table = TRUE)
+  set(featuretable, j = 'm1.max.sign.pat.coef.scaled', value = robustScalingMAD(featuretable[['m1.max.sign.pat.coef']]))
+  set(featuretable, j = 'm2.max.sign.pat.coef.scaled', value = robustScalingMAD(featuretable[['m2.max.sign.pat.coef']]))
+  set(featuretable, j = 'm1.lrvar.scaled', value = robustScalingMAD(featuretable[['m1.lrvar']]))
+  set(featuretable, j = 'm2.lrvar.scaled', value = robustScalingMAD(featuretable[['m2.lrvar']]))
+  return(featuretable)
+}
+
 patternSearch.robust <- function(y,
                                  window.lengths = floor(c(0.1, 0.5) * length(y)),
                                  step.lengths = rep(floor(0.1 * length(y)), length(window.lengths)),
@@ -69,7 +85,7 @@ patternSearch.robust <- function(y,
   set(featuretable, j = 'm2.outliers', value = m2.outlier.model$rweights)
   rmcd <- covMcd(cbind(featuretable[['m1.pat.coef']],featuretable[['m2.pat.coef']]))
   mdist <- mahalanobis(cbind(featuretable[['m1.pat.coef']],featuretable[['m2.pat.coef']]),
-                     center = rmcd$center, cov = rmcd$cov  )
+                       center = rmcd$center, cov = rmcd$cov  )
   set(featuretable, j = 'mdist', value = mdist)
   out <- featuretable[m1.max.sign.pat.coef > m1.pattern.threshold &
                         m2.max.sign.pat.coef > m2.pattern.threshold][order(m2.outliers)]
@@ -89,4 +105,3 @@ patternSearch.robust <- function(y,
     return(out)
   }
 }
-

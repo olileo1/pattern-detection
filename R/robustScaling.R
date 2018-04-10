@@ -11,3 +11,9 @@ robustScaling <- function(x, alpha = 0.1) {
   tmp <- robustMoments(x = x, alpha = alpha)
   return((x - tmp$mean) / (tmp$sd))
 }
+
+robustScalingMAD <- function(x) {
+  med <- median(x)
+  mad <- median(abs(x - med))
+  return((x - med) / mad)
+}
