@@ -323,29 +323,71 @@ patternFitting.fiesta <- function(y,
     slope = 1:n,
     pattern = approx(pat, n = length(y))$y
   )
-  m1 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'pattern')]),
-                  y = y,
-                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, k.max = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
-  m1.res.smooth <- movingMedian(y = m1$residuals, n.back = 3, n.ahead = 3)
-  m2 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope', 'pattern')]),
-                  y = y,
-                  control = lmrob.control(setting = 'KS2011', maxit.scale = 1000, max.it = 1000, k.max = 1000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
-  m2.res.smooth <- movingMedian(y = m2$residuals, n.back = 3, n.ahead = 3)
+  tryCatch({
+    m1 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'pattern')]),
+                    y = y,
+                    control = lmrob.control(setting = 'KS2011', maxit.scale = 10000, max.it = 10000, k.max = 10000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+    m1.scale <- m1$scale
+    m1.res.smooth <- movingMedian(y = m1$residuals, n.back = 3, n.ahead = 3)
+    m1.lrvar <- (lrvar(m1.res.smooth) * n) / var(m1.res.smooth)
+    m1.pat.coef <- m1$coefficients['pattern']
+    m1.pat.coef.sd <- m1$cov['pattern', 'pattern']
+    m1.max.sign.pat.coef <- m1$coefficients['pattern'] -
+      qt(0.99, df = m1$df.residual, lower.tail = TRUE) * sqrt(m1$cov['pattern', 'pattern'])
+  },
+  warning = function(w) {
+    x <- as.matrix(X[, c('intercept', 'pattern')])
+    xp <- solve(t(x) %*% x)
+    coef <- (xp %*% t(x) %*% y)[,1]
+    m1.pat.coef <- coef['pattern']
+    residuals <- (y - x %*% coef)[,1]
+    m1.scale <- sd(residuals)
+    m1.res.smooth <- movingMedian(y = residuals, n.back = 3, n.ahead = 3)
+    m1.lrvar <- (lrvar(m1.res.smooth) * n) / var(m1.res.smooth)
+    m1.pat.coef.sd <- (m1.scale ^ 2) * xp['pattern', 'pattern']
+    m1.max.sign.pat.coef = m1.pat.coef -
+      qt(0.99, df = n - 2, lower.tail = TRUE) * sqrt(m1.pat.coef.sd)
+  })
+  tryCatch({
+    m2 <- lmrob.fit(x = as.matrix(X[, c('intercept', 'slope', 'pattern')]),
+                    y = y,
+                    control = lmrob.control(setting = 'KS2011', maxit.scale = 10000, max.it = 10000, k.max = 10000, refine.tol = 1e-6, rel.tol = 1e-6, solve.tol = 1e-6))
+    m2.scale <- m2$scale
+    m2.res.smooth <- movingMedian(y = m2$residuals, n.back = 3, n.ahead = 3)
+    m2.lrvar <- (lrvar(m2.res.smooth) * n) / var(m2.res.smooth)
+    m2.pat.coef <- m2$coefficients['pattern']
+    m2.pat.coef.sd <- m2$cov['pattern', 'pattern']
+    m2.max.sign.pat.coef <- m2$coefficients['pattern'] -
+      qt(0.99, df = m2$df.residual, lower.tail = TRUE) * sqrt(m2$cov['pattern', 'pattern'])
+    m2.slope.coef <- m2$coefficients['slope']
+  },
+  warning = function(w) {
+    x <- as.matrix(X[, c('intercept', 'slope', 'pattern')])
+    xp <- solve(t(x) %*% x)
+    coef <- (xp %*% t(x) %*% y)[,1]
+    m2.pat.coef <- coef['pattern']
+    residuals <- (y - x %*% coef)[,1]
+    m2.scale <- sd(residuals)
+    m2.res.smooth <- movingMedian(y = residuals, n.back = 3, n.ahead = 3)
+    m2.lrvar <- (lrvar(m2.res.smooth) * n) / var(m2.res.smooth)
+    m2.pat.coef.sd <- (m2.scale ^ 2) * xp['pattern', 'pattern']
+    m2.max.sign.pat.coef = m2.pat.coef -
+      qt(0.99, df = n - 2, lower.tail = TRUE) * sqrt(m2.pat.coef.sd)
+    m2.slope.coef <- coef['slope']
+  })
   return(
     list(
-      m1.scale = m1$scale,
-      m1.lrvar = (lrvar(m1.res.smooth) * n) / var(m1.res.smooth),
-      m1.pat.coef = m1$coefficients['pattern'],
-      m1.pat.coef.sd = m1$cov['pattern', 'pattern'],
-      m1.max.sign.pat.coef = m1$coefficients['pattern'] -
-        qt(0.99, df = m1$df.residual, lower.tail = TRUE) * sqrt(m1$cov['pattern', 'pattern']),
-      m2.scale = m2$scale,
-      m2.lrvar = (lrvar(m2.res.smooth) * n) / var(m2.res.smooth),
-      m2.pat.coef = m2$coefficients['pattern'],
-      m2.pat.coef.sd = m2$cov['pattern', 'pattern'],
-      m2.max.sign.pat.coef = m2$coefficients['pattern'] -
-        qt(0.99, df = m2$df.residual, lower.tail = TRUE) * sqrt(m2$cov['pattern', 'pattern']),
-      m2.slope.coef = m2$coefficients['slope']
+      m1.scale = m1.scale,
+      m1.lrvar = m1.lrvar,
+      m1.pat.coef = m1.pat.coef,
+      m1.pat.coef.sd = m1.pat.coef.sd,
+      m1.max.sign.pat.coef = m1.max.sign.pat.coef,
+      m2.scale = m2.scale,
+      m2.lrvar = m2.lrvar,
+      m2.pat.coef = m2.pat.coef,
+      m2.pat.coef.sd = m2.pat.coef.sd,
+      m2.max.sign.pat.coef = m2.max.sign.pat.coef,
+      m2.slope.coef = m2.slope.coef
     )
   )
 }
