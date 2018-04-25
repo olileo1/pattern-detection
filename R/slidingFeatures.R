@@ -53,7 +53,9 @@ slidingFeatures <- function(y, window.lengths, step.lengths,
 patternSearch.gangnamstyle <- function(y,
                                        window.lengths = floor(c(0.1, 0.5) * length(y)),
                                        step.lengths = rep(floor(0.1 * length(y)), length(window.lengths)),
-                                       pattern = list(x = c(0, 0.1, 1), y = c(0, 1, 0))) {
+                                       pattern = list(x = c(0, 0.1, 1), y = c(0, 1, 0)),
+                                       eligible.window.constraints = c('m1.max.sign.pat.coef > 0.1', 'm2.max.sign.pat.coef > 0.1',
+                                                                       'm1.lrvar.scaled < 1', 'm1.lrvar.scaled < 1', 'm2.slope.coef.scaled < 2')) {
   featuretable <- slidingFeatures(y = y,
                                   window.lengths = window.lengths,
                                   step.lengths = step.lengths,
@@ -63,6 +65,8 @@ patternSearch.gangnamstyle <- function(y,
   set(featuretable, j = 'm2.max.sign.pat.coef.scaled', value = robustScalingMAD(featuretable[['m2.max.sign.pat.coef']]))
   set(featuretable, j = 'm1.lrvar.scaled', value = robustScalingMAD(featuretable[['m1.lrvar']]))
   set(featuretable, j = 'm2.lrvar.scaled', value = robustScalingMAD(featuretable[['m2.lrvar']]))
+  set(featuretable, j = 'm2.slope.coef.scaled', value = robustScalingMAD(abs(featuretable[['m2.slope.coef']] / sqrt(featuretable[['m2.slope.coef.var']]))))
+  set(featuretable, j = 'eligible.window', value = 1:nrow(featuretable) %in% featuretable[eval(parse(text = paste(eligible.window.constraints, collapse = ' & '))), which = TRUE])
   return(featuretable)
 }
 
