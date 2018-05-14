@@ -690,7 +690,6 @@ patternFitting.fiesta5 <- function(y,
 ) {
   n <- length(y)
   y <- y / median(y[1:floor(n / 20)])
-  y.smoothed <- movingMedian(y = y, n.back = 3, n.ahead = 3)
   X <- cbind(
     intercept = rep(1, n),
     slope = 1:n,
