@@ -1,4 +1,4 @@
-windowFeatures <- function(y, windows = matrix(c(1, length(y)), ncol =2), feature = function(x) c(mean = mean(x), sd = sd(x)), return.data.table = TRUE) {
+windowFeatures <- function(y, windows = matrix(c(1, length(y)), ncol =2), feature = function(x) c(mean = mean(x), sd = sd(x)), return.tibble = TRUE) {
   out <- lapply(1:dim(windows)[1], function(i) {
     if (is.null(dim(y))) {
       n <- length(y)
@@ -16,8 +16,8 @@ windowFeatures <- function(y, windows = matrix(c(1, length(y)), ncol =2), featur
              )) 
     }
   })
-  if (return.data.table) {
-    return(rbindlist(lapply(out, as.data.table)))
+  if (return.tibble) {
+    return(bind_rows(lapply(out, as_tibble)))
   } else {
     return(out)
   }
@@ -27,13 +27,17 @@ getSlidingWindows <- function(n, window.length, step.length) {
   if (window.length > n) return(matrix(c(1, n), ncol = 2))
   n.windows <- ceiling((n - window.length) / step.length)
   out <- cbind(1 + c(0:n.windows) * step.length, window.length + c(0:n.windows) * step.length)
-  out[dim(out)[1], dim(out)[2]] <- n
+  if ((n - out[dim(out)[1], 1]) < (window.length / 2)) {
+    out <- out[-(dim(out)[1]),]
+  } else {
+    out[dim(out)[1], 2] <- n
+  }
   return(out)
 }
 
 slidingFeatures <- function(y, window.lengths, step.lengths,
                             feature = function(x) mean(x),
-                            return.data.table = TRUE) {
+                            return.tibble = TRUE) {
   if (is.null(dim(y))) {
     n <- length(y)
   } else {
@@ -41,15 +45,61 @@ slidingFeatures <- function(y, window.lengths, step.lengths,
   }
   out <- lapply(1:length(window.lengths), function(i) {
     windows <- getSlidingWindows(n = n, window.length = window.lengths[i], step.length = step.lengths[i])
-    windowFeatures(y = y, windows = windows, feature = feature, return.data.table = return.data.table)
+    windowFeatures(y = y, windows = windows, feature = feature, return.tibble = return.tibble)
   })
-  if (return.data.table) {
-    return(rbindlist(out))
+  if (return.tibble) {
+    return(bind_rows(out))
   } else {
     return(out)
   }
 }
 
+patternSearch <- function(y,
+                          x = NULL,
+                          window.lengths = floor(c(0.1, 0.3, 0.5) * length(y)),
+                          step.lengths = rep(floor(c(0.1) * length(y)), length(window.lengths)),
+                          pattern = list(x = c(0, 0.1, 1), y = c(0, 1, 0)),
+                          window.normalization = 'peak',
+                          lmtype = 'robust',
+                          error.measure = log.lrvar.smooth.trim,
+                          error.boundary = 2,
+                          cluster.detection = 'mclust'
+){
+  lmfunc <- switch(lmtype,
+                   robust = lmrobust.estimation)
+  featuretable <- slidingFeatures(y = y,
+                                  window.lengths = window.lengths,
+                                  step.lengths = step.lengths,
+                                  feature = function(x) {
+                                    patternFitting.wayne(y = x, pat = pattern,
+                                                         normalization = window.normalization,
+                                                         lmfunc = lmfunc,
+                                                         error.measure = error.measure)
+                                  },
+                                  return.tibble = TRUE)
+  anomaly <- switch(cluster.detection,
+                    none = TRUE,
+                    qclust = qclustDist(x =  cbind(featuretable$pattern.coef,
+                                                   featuretable$pattern.error)) > 10)
+  if (anomaly) {
+    featuretable[['pattern.error.scaled']] <- robustscaleQn(featuretable[['error.measure']])
+    featuretable[['pattern.coef.scaled']] <- robustscaleQn(featuretable[['pattern.coef']],
+                                                           mid = 0,
+                                                           idx = featuretable[['error.measure']] < error.boundary)
+    eligible.windows <- featuretable %>% filter(pattern.error.scaled < error.boundary &
+                                                  pattern.error < base.error)
+    if (nrow(eligible.windows) > 0) {
+      return(eligible.windows %>% top_n(1, pattern.coef.scaled))
+    }
+    else {return(NULL)}
+  } else {
+    return(NULL)
+  }
+}
+
+#################################################################################################
+#################################################################################################
+#################################################################################################
 patternSearch.gangnamstyle <- function(y,
                                        window.lengths = floor(c(0.1, 0.5) * length(y)),
                                        step.lengths = rep(floor(0.1 * length(y)), length(window.lengths)),

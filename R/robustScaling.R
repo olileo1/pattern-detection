@@ -12,15 +12,28 @@ robustScaling <- function(x, alpha = 0.1) {
   return((x - tmp$mean) / (tmp$sd))
 }
 
-robustScalingMAD <- function(x) {
+robustscaleMAD <- function(x) {
   med <- median(x)
   mad <- median(abs(x - med))
   return((x - med) / mad)
 }
 
-mid <- function(x, alpha.begin = 0.1, alpha.end = 0.1) {
-  n <- length(x)
-  start <- ceiling(alpha.begin * n)
-  end <- floor((1 - alpha.end) * n)
-  return(x[max(1, start) : min(n, end)])
+robustscaleQn <- function(x, idx = NULL, prob = 0.5, mid = NULL) {
+  if (!is.null(idx)) {
+    sd <- s_Qn(x[idx])
+    if (!is.null(mid)) {
+      mean <- mid
+    } else {
+      mean <- quantile(x[idx], probs = prob)
+    }
+  } else {
+    sd <- s_Qn(x)
+    if (!is.null(mid)) {
+      mean <- mid
+    } else {
+      mean <- quantile(x, probs = prob)
+    }
+    mean <- quantile(x, probs = prob)
+  }
+  return((x - mean) / sd)
 }

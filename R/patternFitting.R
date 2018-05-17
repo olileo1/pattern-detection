@@ -996,3 +996,38 @@ patternFitting.fiesta6 <- function(y,
     out
   )
 }
+
+pattern.fitting.wayne <- function(y,
+                                  pat = list(
+                                    x = c(0, 0.1, 1),
+                                    y = c(0, 1, 0)
+                                  ),
+                                  normalization = 'peak',
+                                  lmfunc = lmrobust.estimation,
+                                  error.measure = log.lrvar.smooth.trim
+                                  ) {
+  n <- length(y)
+  bias <- switch(normalization,
+                 peak = 0,
+                 begin = 0,
+                 end = 0,
+                 standard = mean(y))
+  nominator <- switch(normalization,
+                      peak = max(movingMedian(y, n.back = 3, n.ahead = 3)),
+                      begin = median(y[1:floor(n / 20)]),
+                      end = median(y[(n - floor(n / 20)):n]),
+                      standard = sd(y))
+  y <- (y - bias) / nominator
+  X <- cbind(
+    intercept = rep(1, n),
+    slope = 1:n,
+    pattern = approx(pat, n = length(y))$y
+  )
+  m.base <- lmfunc(X = as.matrix(X[, c('intercept', 'slope')]),
+                   y = y)
+  m.pattern <- lmfunc(X = as.matrix(X[, c('intercept', 'pattern')]))
+  out$base.error <- error.measure(m.base$residuals)
+  out$pattern.error <- error.measure(m.pattern$residuals)
+  out$pattern.coef <- m.pattern$coefficients['pattern']
+  return(out)
+}
