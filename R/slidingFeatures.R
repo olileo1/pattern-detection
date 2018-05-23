@@ -1,28 +1,31 @@
-windowFeatures <- function(y, windows = matrix(c(1, length(y)), ncol =2), feature = function(x) c(mean = mean(x), sd = sd(x)), return.tibble = TRUE) {
+#' For a given timeseries y as vector and a set of window start and end points given as matrix this function applies
+#' the provided feature function on each window of the timeseries.
+#'
+#' @param y univariate timeseries as vector
+#' @param windows start and end points of the windows given as matrix (each row is a window)
+#' @param feature function that takes a vector as Input and returns certain features as list
+#' 
+#' @return tibble where each row contains the features calculated on a certain window
+windowFeatures <- function(y, windows = matrix(c(1, length(y)), ncol = 2), feature = function(x) c(mean = mean(x), sd = sd(x))) {
   out <- lapply(1:dim(windows)[1], function(i) {
-    if (is.null(dim(y))) {
-      n <- length(y)
-      append(as.list(feature(y[max(1, windows[i, 1]):min(windows[i, 2], n)])),
-             list(
-               win.start = windows[i, 1],
-               win.end = windows[i, 2]
-             ))
-    } else {
-      n <- dim(y)[1]
-      append(as.list(feature(y[max(1, windows[i, 1]):min(windows[i, 2], n),])),
-             list(
-               win.start = windows[i, 1],
-               win.end = windows[i, 2]
-             )) 
-    }
+    n <- length(y)
+    append(as.list(feature(y[max(1, windows[i, 1]):min(windows[i, 2], n)])),
+           list(
+             win.start = windows[i, 1],
+             win.end = windows[i, 2]
+           ))
   })
-  if (return.tibble) {
-    return(bind_rows(lapply(out, as_tibble)))
-  } else {
-    return(out)
-  }
+  return(bind_rows(lapply(out, as_tibble)))
 }
 
+#' For a given length n, window.length and step.length this function create a matrix containing
+#' the start and end points for the sliding windows
+#'
+#' @param n positive integer giving the length of the series
+#' @param window.length integer giving the width of the sliding window
+#' @param step.length integer giving the step.length with which the window gets slided through the series
+#' 
+#' @return matrix where each row contains start and end point of a window
 getSlidingWindows <- function(n, window.length, step.length) {
   if (window.length > n) return(matrix(c(1, n), ncol = 2))
   n.windows <- ceiling((n - window.length) / step.length)
@@ -35,9 +38,18 @@ getSlidingWindows <- function(n, window.length, step.length) {
   return(out)
 }
 
+#' For a given timeseries y, given window lengths window.lengths and corresponding step.lengths
+#' this function applies the provided feature function to each set of sliding windows defined by 
+#' window.lengths and step.lengths
+#'
+#' @param y univariat timeseries
+#' @param window.lengths integer vector of length m containing the window lengths
+#' @param step.length integer vector of length m containing the step length for each window length
+#' @param feature function that takes a vector as Input and returns certain features as list
+#' 
+#' @return data.frame where each row contains the features calculated on a certain window
 slidingFeatures <- function(y, window.lengths, step.lengths,
-                            feature = function(x) mean(x),
-                            return.tibble = TRUE) {
+                            feature = function(x) mean(x)) {
   if (is.null(dim(y))) {
     n <- length(y)
   } else {
@@ -45,25 +57,35 @@ slidingFeatures <- function(y, window.lengths, step.lengths,
   }
   out <- lapply(1:length(window.lengths), function(i) {
     windows <- getSlidingWindows(n = n, window.length = window.lengths[i], step.length = step.lengths[i])
-    windowFeatures(y = y, windows = windows, feature = feature, return.tibble = return.tibble)
+    windowFeatures(y = y, windows = windows, feature = feature)
   })
-  if (return.tibble) {
-    return(bind_rows(out))
-  } else {
-    return(out)
-  }
+  return(bind_rows(out))
 }
 
+#' This function performs a patternSearch on a timeseries y. Window lengths and corresponding step lengths
+#' have to be supported by the user, as well as the coordinates of the desired pattern. The normalization
+#' method for the windows can be selected among a variety of alternatives as well the linear regression method.
+#' A function measuring the extend of the residual error has to be supported.
+#'
+#' @param y univariat timeseries
+#' @param window.lengths integer vector of length m containing the window lengths
+#' @param step.lengths integer vector of length m containing the step length for each window length
+#' @param pattern list object with x and y elements containing the coordinates for the pattern
+#' @param window.normalization character defining the desired method to normalize the windows. Can be 'peak', 'begin', 'end', 'standard'
+#' @param lmtype character defining what method to use for the linear regression. For now only 'robust' is possible
+#' @param error.measure any function that takes a vector (residuals of the regression) as input and returns a scalar. 
+#' 
+#' @return data.frame where each row contains the features calculated on a certain window
 patternSearch <- function(y,
-                          x = NULL,
                           window.lengths = floor(c(0.1, 0.3, 0.5) * length(y)),
                           step.lengths = rep(floor(c(0.1) * length(y)), length(window.lengths)),
                           pattern = list(x = c(0, 0.1, 1), y = c(0, 1, 0)),
                           window.normalization = 'peak',
                           lmtype = 'robust',
                           error.measure = log.lrvar.smooth.trim,
-                          error.boundary = 2,
-                          cluster.detection = 'mclust'
+                          cluster.detection = 'mclust',
+                          selection.criteria = 'robust.scale',
+                          plot.top.windows = 5
 ){
   lmfunc <- switch(lmtype,
                    robust = lmrobust.estimation)
@@ -75,19 +97,17 @@ patternSearch <- function(y,
                                                          normalization = window.normalization,
                                                          lmfunc = lmfunc,
                                                          error.measure = error.measure)
-                                  },
-                                  return.tibble = TRUE)
+                                  })
   anomaly <- switch(cluster.detection,
                     none = TRUE,
-                    qclust = qclustDist(x =  cbind(featuretable$pattern.coef,
+                    qclust = mclustDist(x =  cbind(featuretable$pattern.coef,
                                                    featuretable$pattern.error)) > 10)
   if (anomaly) {
     featuretable[['pattern.error.scaled']] <- robustscaleQn(featuretable[['error.measure']])
     featuretable[['pattern.coef.scaled']] <- robustscaleQn(featuretable[['pattern.coef']],
                                                            mid = 0,
-                                                           idx = featuretable[['error.measure']] < error.boundary)
-    eligible.windows <- featuretable %>% filter(pattern.error.scaled < error.boundary &
-                                                  pattern.error < base.error)
+                                                           idx = featuretable[['error.measure']] < 1.5)
+    eligible.windows <- featuretable %>% filter(pattern.error.scaled < 1.5)
     if (nrow(eligible.windows) > 0) {
       return(eligible.windows %>% top_n(1, pattern.coef.scaled))
     }

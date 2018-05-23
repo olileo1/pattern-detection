@@ -1,4 +1,4 @@
-qclustDist <- function(X) {
+mclustDist <- function(X) {
   X.scaled <- apply(X, 2, function(x) {
     robustscaleQn(x)
   })
