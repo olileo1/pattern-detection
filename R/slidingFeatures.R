@@ -85,7 +85,7 @@ patternSearch <- function(y,
                           error.measure = log.lrvar.smooth.trim,
                           cluster.detection = 'mclust',
                           selection.criteria = 'robust.scale',
-                          plot.top.windows = 5
+                          top.windows = 5
 ){
   lmfunc <- switch(lmtype,
                    robust = lmrobust.estimation)
@@ -93,23 +93,29 @@ patternSearch <- function(y,
                                   window.lengths = window.lengths,
                                   step.lengths = step.lengths,
                                   feature = function(x) {
-                                    patternFitting.wayne(y = x, pat = pattern,
+                                    pattern.fitting.wayne(y = x, pat = pattern,
                                                          normalization = window.normalization,
                                                          lmfunc = lmfunc,
                                                          error.measure = error.measure)
                                   })
   anomaly <- switch(cluster.detection,
                     none = TRUE,
-                    qclust = mclustDist(x =  cbind(featuretable$pattern.coef,
+                    mclust = mclustDist(X =  cbind(featuretable$pattern.coef,
                                                    featuretable$pattern.error)) > 10)
   if (anomaly) {
-    featuretable[['pattern.error.scaled']] <- robustscaleQn(featuretable[['error.measure']])
+    featuretable[['pattern.error.scaled']] <- robustscaleQn(featuretable[['pattern.error']])
     featuretable[['pattern.coef.scaled']] <- robustscaleQn(featuretable[['pattern.coef']],
                                                            mid = 0,
-                                                           idx = featuretable[['error.measure']] < 1.5)
-    eligible.windows <- featuretable %>% filter(pattern.error.scaled < 1.5)
+                                                           idx = featuretable[['pattern.error']] < 1.5)
+    eligible.windows <- featuretable %>%
+      filter(pattern.error.scaled < 1.5) %>%
+      arrange(-pattern.coef.scaled)
     if (nrow(eligible.windows) > 0) {
-      return(eligible.windows %>% top_n(1, pattern.coef.scaled))
+      out <- eligible.windows
+      return(list(
+        y = y,
+        windowresults = out
+        ))
     }
     else {return(NULL)}
   } else {

@@ -1,5 +1,5 @@
 lmrobust.estimation <- function(y, X) {
-  tryCatch({
+  out <- tryCatch({
     m <- lmrob.fit(x = X,
                    y = y,
                    control = lmrob.control(setting = 'KS2011',
@@ -9,13 +9,24 @@ lmrobust.estimation <- function(y, X) {
                                            refine.tol = 1e-6,
                                            rel.tol = 1e-6,
                                            solve.tol = 1e-6))
-    out$coefficients <- m$coefficients
-    out$residuals <- m$residuals
+    return(list(
+      coefficients = m$coefficients,
+      residuals = m$residuals
+    ))
   },
   warning = function(w) {
     coefficients <- solve(t(X) %*% X, t(X) %*% y)[,1]
-    out$residuals <- (y - X %*% coefficients)[,1]
-    out$coefficients <- coefficients
+    return(list(
+      coefficients = coefficients,
+      residuals = (y - X %*% coefficients)[,1]
+    ))
+  },
+  error = function(e) {
+    coefficients <- solve(t(X) %*% X, t(X) %*% y)[,1]
+    return(list(
+      coefficients = coefficients,
+      residuals = (y - X %*% coefficients)[,1]
+    ))
   })
   return(out)
 }
