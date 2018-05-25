@@ -18,20 +18,28 @@ pattern.fitting.wayne <- function(y,
                       begin = median(y[1:floor(n / 20)]),
                       end = median(y[(n - floor(n / 20)):n]),
                       standard = sd(y))
-  y <- (y - bias) / nominator
-  X <- cbind(
-    intercept = rep(1, n),
-    slope = 1:n,
-    pattern = approx(pat, n = length(y))$y
-  )
-  m.base <- lmfunc(X = as.matrix(X[, c('intercept', 'slope')]),
-                   y = y)
-  m.pattern <- lmfunc(X = as.matrix(X[, c('intercept', 'slope', 'pattern')]),
-                      y = y)
-  out <- list()
-  out$base.error <- error.measure(m.base$residuals)
-  out$pattern.error <- error.measure(m.pattern$residuals)
-  out$pattern.coef <- m.pattern$coefficients['pattern']
+  if (nominator > 0) {
+    y <- (y - bias) / nominator
+    X <- cbind(
+      intercept = rep(1, n),
+      slope = 1:n,
+      pattern = approx(pat, n = length(y))$y
+    )
+    m.base <- lmfunc(X = as.matrix(X[, c('intercept', 'slope')]),
+                     y = y)
+    m.pattern <- lmfunc(X = as.matrix(X[, c('intercept', 'pattern')]),
+                        y = y)
+    out <- list()
+    out$base.error <- error.measure(m.base$residuals)
+    out$pattern.error <- error.measure(m.pattern$residuals)
+    out$pattern.coef <- m.pattern$coefficients['pattern'] 
+  } else {
+    out <- list()
+    out$base.error <- NA
+    out$pattern.error <- NA
+    out$pattern.coef <- NA
+  }
+  
   return(out)
 }
 
