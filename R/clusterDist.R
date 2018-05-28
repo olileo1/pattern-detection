@@ -19,3 +19,21 @@ mclustDist <- function(X) {
   }
   return(max(dist))
 }
+
+qclustDist <- function(X) {
+  m <- Qclust(X, K = c(1, 2, 3), q = 0.9, modelNames = 'VVV')
+  groups <- table(m$classification)
+  pivot.group <- which(groups == max(groups))[1]
+  eligible.groups <- setdiff(which(groups > (dim(X)[1] / 10)), pivot.group)
+  dist <- 0
+  if (length(eligible.groups) > 0) {
+    for (g in eligible.groups) {
+      dist <- c(dist,
+                quantile(mahalanobis(x = X[m$classification == g,],
+                                     center = m$parameters$mean[, pivot.group],
+                                     cov = m$parameters$variance$sigma[,,pivot.group]),
+                         probs = 0.25))
+    }
+  }
+  return(max(dist))
+}

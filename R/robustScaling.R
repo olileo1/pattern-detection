@@ -18,22 +18,16 @@ robustscaleMAD <- function(x) {
   return((x - med) / mad)
 }
 
-robustscaleQn <- function(x, idx = NULL, prob = 0.5, mid = NULL) {
-  if (!is.null(idx)) {
-    sd <- s_Qn(x[idx])
-    if (!is.null(mid)) {
-      mean <- mid
-    } else {
-      mean <- quantile(x[idx], probs = prob)
-    }
-  } else {
-    sd <- s_Qn(x)
-    if (!is.null(mid)) {
-      mean <- mid
-    } else {
-      mean <- quantile(x, probs = prob)
-    }
-    mean <- quantile(x, probs = prob)
-  }
+modals <- function(x, nmods = 2, orderout = 2) {
+  m <- tclust(x = x, k = nmods)
+  return(sort(m$centers)[orderout])
+}
+
+robustscaleQn <- function(x, idx = seq_along(x), mid = NULL, mid.value = 0, prob = 0.5, nmods = 2, orderout = 1) {
+  mean <- switch(mid,
+                 quantile = quantile(x[idx], probs = prob),
+                 modal = modals(x[idx], nmods = nmods, orderout = orderout),
+                 fixed = mid.value)
+  sd <- s_Qn(x[idx])
   return((x - mean) / sd)
 }
