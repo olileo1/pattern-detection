@@ -52,7 +52,7 @@ slidingFeatures <- function(y, window.lengths, step.lengths,
                             feature = function(x) mean(x)) {
   n <- length(y)
   out <- lapply(1:length(window.lengths), function(i) {
-    if (n < window.lengths[i]) {
+    if (n > window.lengths[i]) {
       windows <- getSlidingWindows(n = n, window.length = window.lengths[i], step.length = step.lengths[i])
       windowFeatures(y = y, windows = windows, feature = feature)
     }
@@ -99,10 +99,10 @@ patternSearch <- function(y,
   
   featuretable <- featuretable %>% filter(!is.na(pattern.error) & !is.na(pattern.coef) & !is.na(base.error))
   
-  anomaly <- switch(cluster.detection,
-                    none = TRUE,
-                    mclust = mclustDist(X =  cbind(featuretable$pattern.coef,
-                                                   featuretable$pattern.error)) > 10)
+  # anomaly <- switch(cluster.detection,
+  #                   none = TRUE,
+  #                   mclust = mclustDist(X =  cbind(featuretable$pattern.coef,
+  #                                                  featuretable$pattern.error)) > 10)
   
   if (TRUE) {
     featuretable[['pattern.error.scaled']] <- robustscaleQn(featuretable[['pattern.error']], 
