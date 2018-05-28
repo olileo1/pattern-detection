@@ -50,14 +50,12 @@ getSlidingWindows <- function(n, window.length, step.length) {
 #' @return data.frame where each row contains the features calculated on a certain window
 slidingFeatures <- function(y, window.lengths, step.lengths,
                             feature = function(x) mean(x)) {
-  if (is.null(dim(y))) {
-    n <- length(y)
-  } else {
-    n <- dim(y)[1]
-  }
+  n <- length(y)
   out <- lapply(1:length(window.lengths), function(i) {
-    windows <- getSlidingWindows(n = n, window.length = window.lengths[i], step.length = step.lengths[i])
-    windowFeatures(y = y, windows = windows, feature = feature)
+    if (n < window.lengths[i]) {
+      windows <- getSlidingWindows(n = n, window.length = window.lengths[i], step.length = step.lengths[i])
+      windowFeatures(y = y, windows = windows, feature = feature)
+    }
   })
   return(bind_rows(out))
 }
@@ -98,15 +96,20 @@ patternSearch <- function(y,
                                                          lmfunc = lmfunc,
                                                          error.measure = error.measure)
                                   })
+  
+  featuretable <- featuretable %>% filter(!is.na(pattern.error) & !is.na(pattern.coef) & !is.na(base.error))
+  
   anomaly <- switch(cluster.detection,
                     none = TRUE,
                     mclust = mclustDist(X =  cbind(featuretable$pattern.coef,
                                                    featuretable$pattern.error)) > 10)
-  if (anomaly) {
-    featuretable[['pattern.error.scaled']] <- robustscaleQn(featuretable[['pattern.error']])
+  
+  if (TRUE) {
+    featuretable[['pattern.error.scaled']] <- robustscaleQn(featuretable[['pattern.error']], 
+                                                            idx = featuretable[['pattern.error']] < featuretable[['base.error']]*0.95)
     featuretable[['pattern.coef.scaled']] <- robustscaleQn(featuretable[['pattern.coef']],
                                                            mid = 0,
-                                                           idx = featuretable[['pattern.error']] < 1.5)
+                                                           idx = featuretable[['pattern.error']] < featuretable[['base.error']]*0.95)
     eligible.windows <- featuretable %>%
       filter(pattern.error.scaled < 1.5) %>%
       arrange(-pattern.coef.scaled)
