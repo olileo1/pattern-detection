@@ -81,8 +81,7 @@ patternSearch <- function(y,
                           window.normalization = 'peak',
                           lmtype = 'robust',
                           error.measure = log.lrvar.smooth.trim,
-                          cluster.detection = 'mclust',
-                          selection.criteria = 'robust.scale',
+                          window.selection = robust.selection,
                           top.windows = 5
 ){
   lmfunc <- switch(lmtype,
@@ -92,38 +91,13 @@ patternSearch <- function(y,
                                   step.lengths = step.lengths,
                                   feature = function(x) {
                                     pattern.fitting.wayne(y = x, pat = pattern,
-                                                         normalization = window.normalization,
-                                                         lmfunc = lmfunc,
-                                                         error.measure = error.measure)
+                                                          normalization = window.normalization,
+                                                          lmfunc = lmfunc,
+                                                          error.measure = error.measure)
                                   })
-  
-  featuretable <- featuretable %>% filter(!is.na(pattern.error) & !is.na(pattern.coef) & !is.na(base.error))
-  
-  # anomaly <- switch(cluster.detection,
-  #                   none = TRUE,
-  #                   mclust = mclustDist(X =  cbind(featuretable$pattern.coef,
-  #                                                  featuretable$pattern.error)) > 10)
-  
-  if (TRUE) {
-    featuretable[['pattern.error.scaled']] <- robustscaleQn(featuretable[['pattern.error']], 
-                                                            idx = featuretable[['pattern.error']] < featuretable[['base.error']]*0.95)
-    featuretable[['pattern.coef.scaled']] <- robustscaleQn(featuretable[['pattern.coef']],
-                                                           mid = 0,
-                                                           idx = featuretable[['pattern.error']] < featuretable[['base.error']]*0.95)
-    eligible.windows <- featuretable %>%
-      filter(pattern.error.scaled < 1.5) %>%
-      arrange(-pattern.coef.scaled)
-    if (nrow(eligible.windows) > 0) {
-      out <- eligible.windows
-      return(list(
-        y = y,
-        windowresults = out
-        ))
-    }
-    else {return(NULL)}
-  } else {
-    return(NULL)
-  }
+  out <- robust.selection(pattern.coef = featuretable$pattern.coef,
+                          pattern.error = featuretable$pattern.error)
+  return(out)
 }
 
 #################################################################################################
