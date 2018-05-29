@@ -1,6 +1,6 @@
 mclust.selection <- function(pattern.coef, pattern.error, pattern.error.bounds = c(-Inf, 1.5), pattern.coef.bounds = c(3, Inf)) {
   pattern.error.scaled <- robustscaleQn(x = pattern.error, mid = 'modal', nmods = 2, orderout = 1)
-  pattern.coef.scaled <- robustScaleQn(x = pattern.coef, idx = pattern.error.scaled < pattern.error.bounds[2], mid = 'fixed', mid.value = 0)
+  pattern.coef.scaled <- robustscaleQn(x = pattern.coef, idx = pattern.error.scaled < pattern.error.bounds[2], mid = 'fixed', mid.value = 0)
   X <- cbind(pattern.coef.scaled,
              pattern.error.scaled)
   m <- Mclust(X, G = c(1, 2, 3), modelNames = 'VVV')
@@ -23,7 +23,7 @@ mclust.selection <- function(pattern.coef, pattern.error, pattern.error.bounds =
 
 robust.selection <- function(pattern.coef, pattern.error, pattern.error.bounds = c(-Inf, 1.5), pattern.coef.bounds = c(3, Inf)) {
   pattern.error.scaled <- robustscaleQn(x = pattern.error, mid = 'modal', nmods = 2, orderout = 1)
-  pattern.coef.scaled <- robustScaleQn(x = pattern.coef, idx = pattern.error.scaled < pattern.error.bounds[2], mid = 'fixed', mid.value = 0)
+  pattern.coef.scaled <- robustscaleQn(x = pattern.coef, idx = pattern.error.scaled < pattern.error.bounds[2], mid = 'fixed', mid.value = 0)
   dist <- qclustDist(X = cbind(pattern.coef.scaled, pattern.error.scaled))
   if (dist > 10) {
     out <- ifelse(pattern.error.scaled > pattern.error.bounds[2] | pattern.error.scaled < pattern.error.bounds[1], 'residuals',

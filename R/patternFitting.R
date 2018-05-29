@@ -27,7 +27,7 @@ pattern.fitting.wayne <- function(y,
     )
     m.base <- lmfunc(X = as.matrix(X[, c('intercept', 'slope')]),
                      y = y)
-    m.pattern <- lmfunc(X = as.matrix(X[, c('intercept', 'pattern')]),
+    m.pattern <- lmfunc(X = as.matrix(X[, c('intercept', 'slope', 'pattern')]),
                         y = y)
     out <- list()
     out$base.error <- error.measure(m.base$residuals)
