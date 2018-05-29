@@ -17,6 +17,8 @@ mclust.selection <- function(pattern.coef, pattern.error, pattern.error.bounds =
     out <- rep('base', length(pattern.coef))
   }
   return(data.frame(out = out,
+                    pattern.coef = pattern.coef,
+                    pattern.error = pattern.error,
                     pattern.coef.scaled = pattern.coef.scaled,
                     pattern.error.scaled = pattern.error.scaled))
 }
@@ -32,6 +34,8 @@ robust.selection <- function(pattern.coef, pattern.error, pattern.error.bounds =
     out <- 'base'
   }
   return(data.frame(out = out,
+                    pattern.coef = pattern.coef,
+                    pattern.error = pattern.error,
                     pattern.coef.scaled = pattern.coef.scaled,
                     pattern.error.scaled = pattern.error.scaled))
 }
