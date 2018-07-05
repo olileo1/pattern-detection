@@ -726,7 +726,6 @@ patternFitting.fiesta4 <- function(y,
     out$m2.df <- n - 3
     out$m2.method <- 'lm'
   })
-  
   return(
     out
   )

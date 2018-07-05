@@ -88,7 +88,7 @@ create.randompattern <- function(pattern.points = list(x = c(0, 0.5, 1), y = c(0
   # total length of the timeseries is random
   total.n <- runif(n = 1, min = 0.8 * length, max = 1.2 * length)
   splits <- runif(7, 0.1, 0.9)
-  splits <- c(splits[1:2], sum(splits[3:5]), splits[6:7])
+  splits <- c(sum(splits[1:2]), sum(splits[3:5]), sum(splits[6:7]))
   splits <- splits / sum(splits)
   pre.coef <- c(1, 1)
   pre.n <- floor(splits[1] * total.n)

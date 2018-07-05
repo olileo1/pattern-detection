@@ -95,7 +95,7 @@ patternSearch <- function(y,
                                                           lmfunc = lmfunc,
                                                           error.measure = error.measure)
                                   })
-  out <- robust.selection(pattern.coef = featuretable$pattern.coef,
+  out <- window.selection(pattern.coef = featuretable$pattern.coef,
                           pattern.error = featuretable$pattern.error)
   out$win.start <- featuretable$win.start
   out$win.end <- featuretable$win.end
