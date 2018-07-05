@@ -73,34 +73,28 @@ noise_generator <- function(n = 50, sd = 1, spike.prob = 0.1, ar1 = 0.8, season 
   return(noise + spikes)
 }
 
-create.randompattern <- function(type = 'type0',
+create.randompattern <- function(pattern.points = list(x = c(0, 0.5, 1), y = c(0, 1, 0)),
                                  magnitude = 1,
                                  length = 1000,
+                                 pre.growth = 0,
+                                 pattern.growth = 0,
+                                 past.growth = 0,
+                                 pattern.height.ratio = runif(1, 0.5, 0.8),
                                  plot = FALSE,
                                  rsd = 0.1,
                                  ar1 = 0.1,
                                  spike.prob = 0.01) {
-  pattern.points <- switch(type,
-                           type0 = cbind(x = c(0, 1), y = c(0, 0)),
-                           type1 = cbind(x = c(0, 0.1, 1), y = c(0, 1, 0)),
-                           type2 = cbind(x = c(0, 0.2, 1), y = c(0, 1, 0)),
-                           type3 = cbind(x = c(0, 0.5, 1), y = c(0, 1, 0)),
-                           type4 = cbind(x = c(0, 0.9, 1), y = c(0, 1, 0)))
   start.height <- runif(n = 1, min = 0.9 * magnitude, max = 1.1 * magnitude)
   # total length of the timeseries is random
   total.n <- runif(n = 1, min = 0.8 * length, max = 1.2 * length)
-  splits <- runif(4, 0.1, 0.9)
-  splits <- c(splits[1], sum(splits[2:3]), splits[4])
+  splits <- runif(7, 0.1, 0.9)
+  splits <- c(splits[1:2], sum(splits[3:5]), splits[6:7])
   splits <- splits / sum(splits)
-  pre.growth <- 0
-  pattern.growth <- 0
-  past.growth <- 0
   pre.coef <- c(1, 1)
   pre.n <- floor(splits[1] * total.n)
   past.coef <- c(1, 1)
   past.n <- floor(splits[3] * total.n)
   pattern.n <- floor(splits[2] * total.n)
-  pattern.height.ratio <- runif(1, 0.1, 0.4)
   pattern.height <- start.height * pattern.height.ratio
   
   x <- create.stream(pre.start = start.height,
@@ -116,35 +110,11 @@ create.randompattern <- function(type = 'type0',
                      past.end = start.height * (1 + pre.growth) * (1 + pattern.growth) * (1 + past.growth))
   
   rsd <- rsd
-  #stn <- c(0.5, 1)
   ar1 <- ar1
-  #ar1 <- c(0.1, 0.9)
   spike.prob <- spike.prob
-  var.x <- var(seq(magnitude, magnitude * (1.4), length.out = total.n))
-  params <- expand.grid(rsd = rsd, ar1 = ar1, spike.prob = spike.prob)
-  series <- lapply(1:dim(params)[1], function(i) {
-    noise <- noise_generator(n = length(x), sd = params[i, 'rsd'] / qnorm(0.95, 0, 1), spike.prob = params[i, 'spike.prob'],
-                             season = NULL, ar1 = params[i, 'ar1'])
-    list(
-      y = x + noise,
-      rsd = params[i, 'rsd'],
-      spike.prob = params[i, 'spike.prob'],
-      ar1 = params[i, 'ar1']
-    )
-  })
-  if (plot) {
-    plot.data <- do.call('rbind', lapply(c1, series, function(serie) {
-      if (serie$spike.prob == 0.01) {
-        data.frame(x = 1:length(serie$y), y = serie$y, rsd = serie$rsd, ar1 = serie$ar1)
-      } else {
-        NULL
-      }
-    }))
-    print(ggplot(data = plot.data, aes(x = x, y = y)) +
-            geom_rect(aes(xmin = pre.n + 1, xmax = pre.n + pattern.n + 1, ymin = -Inf, ymax = Inf), color = 'blue', alpha = 0.5) +
-            geom_line() + facet_grid(rsd ~ ar1) + ggtitle(type))
-  }
+  noise <- noise_generator(n = length(x), sd = rsd / qnorm(0.95, 0, 1), spike.prob = spike.prob,
+                           season = NULL, ar1 = ar1)
+  series <- x + noise
   return(list(series = series,
-              type = type,
               pattern.window = c(pre.n + 1, pre.n + pattern.n + 1)))
 }
